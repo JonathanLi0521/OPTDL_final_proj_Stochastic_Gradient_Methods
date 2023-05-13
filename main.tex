@@ -31,6 +31,17 @@
 \frame{\titlepage}
 
 \begin{frame}
+\frametitle{Problem Statement and Motivation}
+While surveying several stochastic gradient based methods, the slight differences in the algorithms and constraints / assumptions that resulted in similar convergence complexities in the following articles stood out to us:
+\begin{enumerate}
+    \item [1.] On the Convergence of Stochastic Gradient Descent with Adaptive Stepsizes - Xiaoyu Li et al.
+    \item [2.] AdaGrad stepsizes: Sharp convergence over nonconvex landscapes - Rachel Ward et al.
+
+\end{enumerate}
+Hence, we try to understand the purpose and necessity of the differences by studying the proofs of both papers' convergence.
+\end{frame}
+
+\begin{frame}
 \frametitle{Outline}
 \begin{enumerate}
         \item [1.] Past Progress
@@ -144,7 +155,7 @@ Note: $\eta_t$ is the learning rate at the $t^{th}$ iteration; $\eta_t^*$ may be
 
 \begin{frame}
 \frametitle{Xiaoyu Li et al. - Non-arithmetic Segments: Lemma 3}
-When surveying Xiaoyu Li et al.'s article, we noticed that only two segments in the proof require non-arithmetic lemmas (3, 8).\par
+When surveying Xiaoyu Li et al.'s article, we noticed that there are only two non-arithmetic lemmas (3, 8).\par
 \vspace{5mm}
 Lemma 3: Assume $f$ is M-smooth and $E[G(x_{t-1},\xi_{t-1})]=\nabla f(x_{t-1})$. 
 Then, the iterates of SGD with stepsizes $\eta_t \in R^{d}$ satisfy the following inequality
@@ -170,7 +181,7 @@ This equation requires that $\eta_t$ is independent to $\xi_{t-1}$. The two term
 
 \begin{frame}
 \frametitle{Xiaoyu Li et al. - Smoothness Constant from Lemma 3 \& 8} 
-In the the next three slides, we demonstrate why concrete knowledge on the value of smoothness constant $M$ is necessary.
+In the next three slides, we demonstrate why concrete knowledge on the value of smoothness constant $M$ is necessary.
 $\begin{aligned} & E\left[\sum_{t=1}^T \eta_t^2\left\|G\left(x_{t-1}, \xi_{t-1}\right)\right\|^2\right]\\ =&E\left[\color{red}\sum_{t=1}^T \eta_{t+1}^2\left\|G\left(x_{t-1}, \xi_{t-1}\right)\right\|^2\color{black}+\color{blue}\sum_{t=1}^T\left\|G\left(x_{t-1}, \xi_{t-1}\right)\right\|^2\left(\eta_t^2-\eta_{t+1}^2\right)\color{black}\right] \\  \leq & \color{red}2 \eta^2 \ln \left(\sqrt{b_0^2+2 T \sigma^2}+\sqrt{2} E\left[\sqrt{\sum_{t=1}^T\left\|\nabla f\left(x_{t-1}\right)\right\|^2}\right]\right) - 2\eta^2 ln(b_0)\\ \color{black}+ &\color{blue}\frac{4 \eta^2}{b_0^2}(1+\ln T) \sigma^2+\frac{4 \eta}{b_0} E\left[\sum_{t=1}^T \eta_t\left\|\nabla f\left(x_{t-1}\right)\right\|^2\right]\end{aligned}$
 
 \end{frame}
