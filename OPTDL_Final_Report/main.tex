@@ -1,0 +1,424 @@
+\documentclass[14pt,onecolumn,letterpaper]{extarticle}
+
+
+\setlength{\textheight}{9.075in}
+\setlength{\textwidth}{6.875in}
+\setlength{\columnsep}{0.3125in}
+\setlength{\topmargin}{-0.3in}
+\setlength{\headheight}{0in}
+\setlength{\headsep}{0in}
+\setlength{\parindent}{1pc}
+\setlength{\oddsidemargin}{-.304in}
+\setlength{\evensidemargin}{-.304in}
+
+\usepackage{times}
+\usepackage{epsfig}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{courier}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{amssymb}
+\usepackage{pdfrender}
+
+\usepackage[breaklinks=true,bookmarks=false]{hyperref}
+\setcounter{page}{1}
+\begin{document}
+\raggedbottom
+\title{Optimization for Deep Learning Final Project Report}
+\author{B09902055 Weiping Li, B09902073 Chun-Neng Chu}
+\date{}
+\maketitle
+%\section{Outline}
+%Introduction
+    %general bs
+    %our contributions
+
+%Notation & Definitions
+
+
+
+%Paper Comparisons and Observations
+%	Algorithm
+%	Constraints
+%	Lemmas
+%	Standard SGD Proof Format
+
+%Algorithm - Constraint Relation: Xiaoyu Li et al.
+%	Necessity of Changing Update Sequence - Lemma 3
+%   Necessity of Smoothness Constant - Lemma 3 \& 8
+%   Comparison with ADAGRAD-Norm (Rachel Ward et al.)
+%   convergence rate proof sketch
+
+%Algorithm - Constraint Relation: Rachel Ward et al.
+%	On the Inner Product Term of $\textcircled{5}$ in SGD Proof Format
+%   The Necessity of L-Lipschitz Constraint
+%   The Relation between $a$ and $\delta$
+%   Comparison with ADAGRAD-Norm (Xiaoyu Li et al.)
+%   convergence rate proof sketch
+
+%Conclusion
+
+%Future Works
+
+%References
+
+%Appendix
+
+
+\section{Introduction}
+\subsection{Background}
+Compared to full gradient methods, Stochastic Gradient Methods (SGD) efficiently handles large-scale datasets by randomly selecting subsets of training samples, and thus its computational and storage complexity is not heavily affected by the dataset size, while it maintains decent convergence properties. The derivation of the stepsize and the update procedure are crucial aspects to consider in the context of Stochastic Gradient Descent (SGD), as they have prominent effects on both the convergence guarantee and convergence rate.
+
+\subsection{Motivation}
+In this study, we surveyed two articles: "Xiaoyu Li, Francesco Orabona. On the Convergence of Stochastic Gradient Descent
+with Adaptive Stepsizes" and "Rachel Ward, Xiaoxia Wu, Léon Bottou. AdaGrad stepsizes: Sharp convergence over nonconvex landscapes". They are variants of AdaGrad-Norm with similar convergence rates, yet have slight differences in their respective algorithms regarding the update sequence and the constraints required for their proofs to hold. Given these properties, by studying the two aforementioned papers, we can gain insight on how the update sequence and constraints contribute to the convergence guarantee and convergence rate.
+
+\subsection{Contribution}
+In this study, we strive to complete the following:
+\begin{enumerate}
+        \item [1.] Unify the notation of the two articles and extract a five-step procedure for proving the convergence rate from the shared techniques. 
+        \item [2.] Find the reason for the different update sequence between the two algorithms.
+        \item [3.] Summarize the reasons that Xiaoyu Li et al. require prior knowledge of specific smoothness constant in the proof.
+        \item [4.] Summarize the reasons that Rachel Ward et al. require Lipschitz constraint in proof.
+        \item [5.] Analyze the different usages of the constant '$a$' from the five-step proof procedure.
+        \item [6.] Examine if we can acquire the same convergence rate with Rachel Ward et al.'s algorithm, but using the constraints of Xiaoyu Li et al.. Vice versa.
+\end{enumerate}
+
+\section{Notation \& Preliminaries}
+\subsection{Notation}
+\begin{enumerate}
+    \item [1.] $f:\mathbb{R}^d \rightarrow \mathbb{R}$ is the objective function to minimize.
+    \item [2.] $G:\mathbb{R}^d \times \xi \rightarrow \mathbb{R}^d$ is the unbiased stochastic gradient of $f$.
+    \item [3.] $x_t\in \mathbb{R}^d$ is the input of $f$ (model weights) after $t$ updates.
+    \item [4.] $\eta_t$ is the stepsize of the $t^{th}$ update.
+    \item [5.] $f_t=f(x_t),G_t=G(x_t,\xi_t),\Delta=\sum_{t=1}^T\left\|\nabla f_t\right\|^2$
+\end{enumerate}
+\subsection{Preliminaries}
+\begin{enumerate}
+    \item [-] L-Lipschitz:\\
+        
+        \quad$f$ is L-Lipschitz iff 
+        \begin{align*}
+            \forall x, y \in dom\ f,\ ||f(y)-f(x)|| \leq L||y-x||
+        \end{align*}
+
+    \item [-] M-smooth:\\
+    
+        \quad$f$ is M-smooth iff $f$ is differentiable and satisfied \\
+        \begin{align*}
+            \forall x, y \in dom\ f, f(y) \leq f(x)+\langle\nabla f(x),y-x\rangle+\frac{M}{2}||x-y||_2^2
+        \end{align*}
+    \item [-] Convex:\\
+    
+    \quad$f$ is convex iff
+        $dom\ f$ is convex.
+        and Jensen's inequality is satisfied, i.e.
+        \begin{align*}
+            \forall x, y \in dom\ f,\ \alpha, \beta \geq 0,\ s.t\ \alpha + \beta = 1,\\
+            \alpha f(x) + \beta f(y) \geq f(\alpha x + \beta y)
+        \end{align*}
+    \item [-] Concave:\\
+    
+    \quad$f$ is concave iff $-f$ is convex
+    \item [-] Stochastic gradient noise:
+    \begin{align*} 
+        E_{\xi_t}[||G(x_t, \xi_t) - \nabla f(x_t)||^2] %%\leq \sigma^2%%
+    \end{align*}
+    \item [-] Best-iterate convergence rate with probability $1-\delta$: 
+    \begin{align*} 
+        P\left(min_{0\leq t \leq T} ||\nabla f(x_t)||^2 \leq H(\delta, T, D^*) = O\left(\frac{1}{T^\alpha}\right)\right) \geq 1 - \delta
+    \end{align*}
+    where $H$ is a function that takes $\delta, N$ and data related hyperparameters $D^*$ as input.
+    
+\end{enumerate}
+\section{Paper Comparisons and Observations}
+\subsection{Difference between Algorithms}
+When comparing the algorithms used in the works of Xiaoyu Li et al. and the works of Rachel Ward et al., we notice that they are identical, other than the sequence in which the weights and learning rate are updated. Xiaoyu Li updates the weights before the learning rate, while Rachel Ward does the opposite.
+\begin{algorithm}[H]
+    \caption{ADAGRAD-Norm (Xiaoyu Li et al.)} 
+    \begin{algorithmic}[1]
+            \State Input: Initialize $x_0\in \textit{R}^d,b_0>0,\eta>0$
+        \For {$t=1,2,\ldots$}
+            \State Generate $\xi_{t-1},G_{t-1}=G(x_{t-1},\xi_{t-1})$
+                \State $\boldsymbol{x_t\leftarrow x_{t-1}-\frac{\eta}{b_{t-1}}G_{t-1}}$
+                \State $\boldsymbol{b_t^2\leftarrow b_{t-1}^2+||G_{t-1}||^2}$
+        \EndFor
+      \end{algorithmic} 
+    \end{algorithm}
+\begin{algorithm}[H]
+    \caption{ADAGRAD-Norm (Rachel Ward et al.)} 
+    \begin{algorithmic}[1]
+                \State Input: Initialize $x_0\in \textit{R}^d,b_0>0,\eta>0$
+            \For {$t=1,2,\ldots$}
+                \State Generate $\xi_{t-1},G_{t-1}=G(x_{t-1},\xi_{t-1})$
+                    \State $\boldsymbol{b_t^2\leftarrow b_{t-1}^2+||G_{t-1}||^2}$
+                    \State $\boldsymbol{x_t\leftarrow x_{t-1}-\frac{\eta}{b_{t}}G_{t-1}}$
+                    
+            \EndFor
+    \end{algorithmic} 
+    \end{algorithm}
+\subsection{Different Constraints Required}
+The two algorithms, with their individual constraints, can be proven to have the same complexity for convergence with respect to iteration $T$: $O(\frac{1}{\sqrt{T}})$ However, their constraints differ.\par\vspace{3mm}
+\begin{align*}
+\begin{tabular}{ |p{8cm}||c|c|  }
+ \hline
+ \multicolumn{3}{|c|}{Constraints} \\
+ \hline\hline
+ Constraints$\downarrow$ Algorithm $\rightarrow$ & Xiaoyu Li et al. &Rachel Ward et al.\\
+ \hline
+ M-smooth   & \checkmark    &\checkmark\\
+ \hline
+ $E\left[\left\|\nabla f\left(x_t\right)-G\left(x_t, \xi_t\right)\right\|^2\right]\leq\sigma^2$&   \checkmark  & \checkmark\\
+ \hline
+ $E_{\xi}[G(x, \xi)]=$ $\nabla f(x)$ & \checkmark & \checkmark\\
+ \hline
+ $f > -\infty$    & \checkmark & \checkmark\\
+ \hline
+ know smoothness constant M
+&\checkmark &  \\
+ \hline
+ L-Lipschitz &   & \checkmark\\
+ \hline
+\end{tabular}
+\end{align*}
+Xiaoyu Li requires concrete knowledge on the value of smoothness constant $M$, while Rachel Ward requires the $L$-Lipschitz constraint, but does not need to know the value of $L$.
+\subsection{Standard SGD Proof Format}
+Intuitively speaking, when optimizing, the goal is to find a complexity bound for $||\nabla f(x_t)||^a$ in the form of $O(\frac{1}{T^\alpha})$, where $a$ and $\alpha$ are chosen constants. By observing the proofs in the work of both Xiaoyu Li and Rachel Ward, we extract the overlapping techniques and thought processes into a five-step procedure that we call the Standard SGD Proof Format, which is as follows:
+\begin{enumerate}
+        \item [$\textcircled{1}$] $P(min_{1 \leq t < T}||\nabla f(x_t)||^2 = O(\frac{1}{T^\alpha})) \geq 1 - \delta$
+        \item [$\textcircled{2}$] $E\left[min_{1 \leq t < T}||\nabla f(x_t)||^{\frac{2a-2}{a}}\right]^{\frac{a}{a-1}} = O(\frac{1}{T^{\alpha}})$
+        
+        \item [$\textcircled{3}$] $E\left[(\sum_{t=1}^{T}||\nabla f(x_t)||^2)^\frac{a-1}{a}\right]^{\frac{a}{a-1}} = O(\frac{1}{T^{\alpha - 1}})$
+        
+        \item [$\textcircled{4}$] $ \sum_{t=1}^{T}  E\left[\eta_t^*\left\|\nabla f\left(x_{t-1}\right)\right\|^2\right] \leq f\left(x_0\right)-f^*+\sum_{t=1}^{T} E\left[\frac{\eta_t^2 ||G(x_{t-1}, \xi_{t-1})||^2 M}{2}\right]$
+
+        \item [$\textcircled{5}$] $|f(x_t)-f(x_{t-1})-\langle\nabla f(x_{t-1}), x_t-x_{t-1}\rangle| \leq \frac{M}{2}\|x_t-x_{t-1}\|^2$
+\end{enumerate} \par
+
+$\textcircled{1} \xleftarrow{\text{Markov's}} \textcircled{2} \leftarrow \textcircled{3} \xleftarrow{\text{Trick}} \textcircled{4} \xleftarrow{\text{Trick}} \textcircled{5}$\par
+Note that $\eta_t^*$ may be $\eta_t$ or the estimation of $\eta_t$, and $f^*$ is the optimal target function value.\par
+The increment of numbers ($\textcircled{i}$) represents the thought process of proof, while the arrows are logical or arithmetic implications. In other words, $\textcircled{1}$ is the target inequality that guarantees convergence with a probability greater than $1-\delta$, while $\textcircled{5}$ is from the definition of $M$-smooth. The technicalities of the logical implications from $\textcircled{5}$ to $\textcircled{1}$ will be fleshed out in the sections below for each proof respectively.
+
+\section{Algorithm - Constraint Relation: Xiaoyu Li et al.}
+\subsection{Necessity of Changing Update Sequence - Lemma 3}
+In this section, we discuss why it is necessary for Xiaoyu Li et al.'s proof that the weights are updated before the learning rate in each iteration. \par
+Lemma 3 in Xiaoyu Li et al.'s work states the following: Assume $f$ is M-smooth and $E[G(x_{t-1},\xi_{t-1})]=\nabla f(x_{t-1})$. 
+Then, the iterates of SGD with stepsizes $\eta_t \in R^{d}$ satisfy the below inequality.
+\par\vspace{3mm}
+$E\left[\sum_{t=1}^T\left\langle\nabla f\left(x_{t-1}\right), \eta_t \nabla f\left(x_{t-1}\right)\right\rangle\right] \leq f\left(x_{t-1}\right)-f^*  +\ \frac{M}{2} E\left[\sum_{t=1}^T\left\|\eta_t G\left(x_{t-1}, \xi_{t-1}\right)\right\|^2\right]$
+\par\vspace{3mm}
+In the proof of Lemma 3, there is an intermediary step that requires the following:
+\begin{align*}
+    E_{\xi_{t-1}}\left[\left\langle\nabla f\left(x_{t-1}\right), \eta_t\left(\nabla f\left(x_{t-1}\right)-G\left(x_{t-1}, \xi_{t-1}\right)\right)\right\rangle\right]\\
+    =\left\langle\nabla f\left(x_{t-1}\right), \eta_t \nabla f\left(x_{t-1}\right)-\eta_t E_{\xi_{t-1}}\left[G\left(x_{t-1}, \xi_{t-1}\right)\right]\right\rangle=0
+\end{align*}
+
+The above equation requires that $\eta_t$ is independent to $\xi_{t-1}$. The two terms are independent due to the fact that at the $t^{th}$ iteration, $\eta_t$ is decided by $\xi_0$ to $\xi_{t-2}$. Hence, $\eta_t$ can be taken out of the expectation.
+
+\subsection{Necessity of Smoothness Constant - Lemma 3 \& 8}
+In this section, we discuss why specific knowledge on the value of smoothness constant $M$ for the $M$-smooth function to be optimized is necessary. \par
+From Lemma 8 in Xiaoyu Li et al., we have:
+\par\vspace{3mm}
+$E\left[\sum_{t=1}^T \eta_t^2\left\|G\left(x_{t-1}, \xi_{t-1}\right)\right\|^2\right]\\ =E\left[\boldsymbol{\sum_{t=1}^T \eta_{t+1}^2\left\|G\left(x_{t-1}, \xi_{t-1}\right)\right\|^2}+\sum_{t=1}^T\left\|G\left(x_{t-1}, \xi_{t-1}\right)\right\|^2\left(\eta_t^2-\eta_{t+1}^2\right)\right] \\  \leq \boldsymbol{2 \eta^2 \ln \left(\sqrt{b_0^2+2 T \sigma^2}+\sqrt{2} E\left[\sqrt{\sum_{t=1}^T\left\|\nabla f\left(x_{t-1}\right)\right\|^2}\right]\right) - 2\eta^2 ln(b_0)}\\ + \frac{4 \eta^2}{b_0^2}(1+\ln T) \sigma^2+\frac{4 \eta}{b_0} E\left[\sum_{t=1}^T \eta_t\left\|\nabla f\left(x_{t-1}\right)\right\|^2\right]$
+\par\vspace{3mm}
+With the tricks used by Xiaoyu Li et al., demonstrated in the next subsection, we can claim that the term $\boldsymbol{\sqrt{2} E\left[\sqrt{\sum_{t=1}^T\left\|\nabla f\left(x_{t-1}\right)\right\|^2}\right]}$ can be dropped, and \\$\boldsymbol{\sum_{t=1}^T \eta_{t+1}^2\left\|G\left(x_{t-1}, \xi_{t-1}\right)\right\|^2}$ is bounded by $O(ln(\sqrt{T}))$.
+Intuitively speaking, the term $\sum_{t=1}^T\left\|G\left(x_{t-1}, \xi_{t-1}\right)\right\|^2\left(\eta_t^2-\eta_{t+1}^2\right)$ is the penalty caused by "borrowing" the bold term, which is from the next iteration, to bound the stochastic gradient norm squared. With some tricks, it can be bounded by $\frac{4 \eta^2}{b_0^2}(1+\ln T) \sigma^2+\frac{4 \eta}{b_0} E\left[\sum_{t=1}^T \eta_t\left\|\nabla f\left(x_{t-1}\right)\right\|^2\right]$.\\
+When Lemma 3 is applied in an attempt to bound the term $E\left[\sum_{t=1}^T \eta_t\left\|\nabla f\left(x_{t-1}\right)\right\|^2\right]$, scaling the same term on the RHS of Lemma 8 by $\frac{M}{2}$, we find the below inequality:\\\\
+$\left(1-\frac{2 \eta M}{\sqrt{b_0^2}}\right) E\left[\sum_{t=1}^T \eta_t\left\|\nabla f\left(x_{t-1}\right)\right\|^2\right] \leq f\left(x_0\right)-f^{\star} \\  +M \left(\eta^2 \ln \left(\sqrt{b_0^2+2 T \sigma^2}+\sqrt{2} E\left[\sqrt{\sum_{t=1}^T \left\|\nabla f\left(x_{t-1}\right)\right\|^2}\right]\right)-\frac{\eta^2 ln(b_0^2)}{2}\right) \\ +\frac{2 \eta M}{b_0^2}(1+\ln T) \sigma^2 .$
+
+Consider the case where $\left(1-\frac{2 \eta M}{\sqrt{b_0^2}}\right) \leq 0$, we can see that the inequality always holds, and thus we gain no information of the term $E\left[\sum_{t=1}^T \eta_t\left\|\nabla f\left(x_{t-1}\right)\right\|^2\right]$. Hence we need to know the constant $M$ to initialize $\eta$ and $b_0$.
+
+\subsection{Bounding $E\left[\sqrt{\Delta}\right]$ with $a = 2$}
+Here, we show how choosing the value $a = 2$ works as a trick to help bound $E\left[\sqrt{\Delta}\right]$,\\ where $\Delta:=\sum_{t=1}^T\left\|\nabla f_t\right\|^2$ from $\textcircled{3}$ in the Standard SGD Proof Format for the proof of Xiaoyu Li et al.. \par
+From Lemma 3 and 8 in Xiaoyu Li et al.'s work, have:
+\par\vspace{3mm}
+$E\left[\sum_{t=1}^T \eta_t\left\|\nabla f_t\right\|^2\right] = O\left( \ln \left(\sqrt{T}+ E\left[\sqrt{\Delta}\right]\right)\right).$
+\par\vspace{3mm}
+In order to bound $E\left[\sqrt{\Delta}\right]$,  we utilize Holder to find the following inequality
+\par\vspace{3mm}
+$\begin{aligned} E\left[\left(\left(\frac{1}{\eta_T}\right)^{\frac{a-1}{a}}\right)^{a}\right]^{\frac{1}{a-1}}E\left[\sum_{t=1}^T \eta_t\left\|\nabla f_t\right\|^2\right] \geq E\left[\Delta^{\frac{a-1}{a}}\right]^{\frac{a}{a-1}}\end{aligned}$, 
+\par\vspace{3mm}
+where
+$E\left[\frac{1}{\eta_T}\right]=E\left[\frac{1}{\eta}\left(b_0^2+\sum_{t=1}^{T-1}\left\|\boldsymbol{G}_t \right\|^2\right)^{1 / 2}\right] = O\left(\sqrt{T}+ E\left[\sqrt{\Delta}\right]\right)$
+\par\vspace{3mm}
+Intuitively, when $a = 2$, we have \par\vspace{3mm}
+$E\left[\sqrt{\Delta}\right]^{2} = O\left( \ln \left(\sqrt{T}+ E\left[\sqrt{\Delta}\right]\right)\right)O\left(\sqrt{T}+ E\left[\sqrt{\Delta}\right]\right)$
+\par\vspace{3mm}
+We can then consider two cases:
+    \begin{enumerate}
+        \item$E\left[\sqrt{\Delta}\right] = \omega \left(\sqrt{T}\right)$: 
+        $E\left[\sqrt{\Delta}\right]^{2} = O\left(E\left[\sqrt{\Delta}\right]\ln\left(E\left[\sqrt{\Delta}\right]\right)\right)$ \\ 
+        \par\vspace{3mm}
+        Which holds only if $E\left[\sqrt{\Delta}\right] = O\left(1\right)$.
+        \item Otherwise : $E\left[\sqrt{\Delta}\right]^2 = O\left(\sqrt{T}\ln\left(\sqrt{T}\right)\right)=\tilde{O}\left(\sqrt{T}\right)$\\
+        $\rightarrow  E\left[\sqrt{\Delta}\right]^2=O\left(\sqrt{T}\right)$ By
+        dropping logarithmic term.
+        \\Which is the goal case for $\alpha = \frac{1}{2}$, $a = 2$ in $\textcircled{3}$ of the standard SGD convergence proof format:
+        \par\vspace{3mm}
+        $E\left[(\sum_{t=1}^{T}||\nabla f(x_t)||^2)^\frac{a-1}{a}\right]^{\frac{a}{a-1}} = O(\frac{1}{T^{\alpha - 1}})$
+    \end{enumerate}
+
+\subsection{Comparison with ADAGRAD-Norm (Rachel Ward et al.)}
+Finally, in order to further demonstrate the effects of the above constraints in the proof, we attempt to apply the proof techniques and constraints in Xiaoyu Li et al.'s work to the algorithm in the work of Rachel Ward et al.. \par
+First, when attempting to take $\eta_t$ out of the expectation in the intermediary step of Lemma 3 that requires $E_{\xi_{t-1}}\left[\left\langle\nabla f\left(x_{t-1}\right), \eta_t\left(\nabla f\left(x_{t-1}\right)-G\left(x_{t-1}, \xi_{t-1}\right)\right)\right\rangle\right]\\=\left\langle\nabla f\left(x_{t-1}\right), \eta_t \nabla f\left(x_{t-1}\right)-\eta_t E_t\left[G\left(x_{t-1}, \xi_{t-1}\right)\right]\right\rangle=0$, we find that this is infeasible. This is becauses for the $t^{th}$ iteration, Rachel Ward et al. updates the learning rate ($\eta_t$) before the weights, leading to $\eta_t$ not being independent of $\xi_{t-1}$.\par
+Second, in Rachel Ward et al.'s article, $\eta_t^*$ is an estimation of $\eta_t$ instead of being exactly $\eta_t$. Since in the fragment $E\left[\sum_{t=1}^T \eta_t^*\left\|\nabla f\left(\boldsymbol{x}_t\right)\right\|^2\right] \geq E\left[\eta_T^* \Delta\right]$ of the main proof of convergence rate in Xiaoyu Li et al. requires descending $\eta_t^*$ and it is hard to confirm whether the estimation is indeed descending, the proof cannot be generalized to Rachel Ward et al. trivially.
+
+\subsection{Convergence Rate Proof Sketch}
+We summarize Xiaoyu's work
+ by mapping the main components of their proof to those five steps in Standard SGD Proof Format:\\
+\begin{enumerate}
+    \item [$\textcircled{5}$] $|f(x_t)-f(x_{t-1})-\langle\nabla f(x_{t-1}), x_t-x_{t-1}\rangle| \leq \frac{M}{2}\|x_t-x_{t-1}\|^2$\\
+    \item [$\textcircled{4}$] $\begin{aligned} E\left[\sum_{t=1}^T \eta_t\left\|\nabla f_{t-1}\right\|^2\right] \leq f_{0}-f^* +\ \frac{M}{2} 
+    E\left[\sum_{t=1}^T\left\|\eta_t G_{t-1}\right\|^2\right]\end{aligned}$\\
+    \item [$\textcircled{3}$] 
+    $E\left[\left(\sum_{t=1}^{T}||\nabla f(x_t)||^2\right)^{\frac{2-1}{2}}\right]^{\frac{2}{2-1}}
+    = O(\frac{1}{T^{\frac{1}{2} - 1}})$
+    \item [$\textcircled{2}$] $E[min_{1 \leq t < T}||\nabla f(x_t)||^{\frac{2\cdot 2-2}{2}}]^{\frac{2}{2-1}} = O(\frac{1}{T^{\frac{1}{2}}})$
+    \item [$\textcircled{1}$] $P([min_{1 \leq t < T}||\nabla f(x_t)||^2 = O(\frac{1}{T^\frac{1
+    }{2}})) \geq 1 - \delta$\\\par
+\end{enumerate} \par
+$\textcircled{1} \xleftarrow{\text{Markov's}} \textcircled{2} \xleftarrow{\text{Trivial}} \textcircled{3} \xleftarrow{\text{ Knowledge of smoothness constant}} \textcircled{4} \xleftarrow{\text{Change of update sequence}} \textcircled{5}$(Assumptions)
+\section{Algorithm - Constraint Relation: Rachel Ward et al.}
+\subsection{On the Inner Product Term of $\textcircled{5}$ in SGD Proof Format}
+From the L-smooth definition and our goal of bounding the expectation of gradient norm squared, we want to move $f$ related terms in the inner product to the LHS of the below inequality.\\
+    $\begin{aligned} f_{t+1}-f_t & \leq\boldsymbol{-\eta\left\langle\nabla f_t, \frac{G_t}{b_{t+1}}\right\rangle}+\frac{\eta^2 M}{2 b_{t+1}^2}\left\|G_t\right\|^2 \end{aligned}$
+    
+    The result is as follows, where the bold terms are from the inner product term. 
+    $\boldsymbol{E\left[\frac{\eta\left\|\nabla f_t\right\|^2}{2 \sqrt{b_t^2+\left\|\nabla f_t\right\|^2+\sigma^2}}\right]} \leq E\left[f_t\right]-E\left[f_{t+1}\right]+\boldsymbol{\frac{4 \sigma\eta}{2} E\left[\frac{\left\|G_t\right\|^2}{b_{t+1}^2}\right]}+ \frac{\eta^2 }{2} E\left[\frac{\left\|G_t\right\|^2}{b_{t+1}^2}\right]$\par
+    Note: $\nabla f_t, G_t$ stand for the gradient and stochastic gradient at the $t^{th}$ iteration. For future references, we define $\eta_t^* = \frac{\eta}{2\sqrt{b_t^2+\left||\nabla f_t\right||^2+\sigma^2}}$.
+\subsection{The Necessity of L-Lipschitz Constraint}
+In Xiaoyu Li et al.'s work, there is a step where Holder is used to bound $\left(E\left[\Delta^{1 / 2}\right]\right)^{2}$, and (indirectly) bound $\eta_t$, which is the counterpart of the LHS on the last page in Xiaoyu Li's proof. Here, $\Delta:=\sum_{t=1}^T\left\|\nabla f_t\right\|^2$ and $a = 2$.
+    \\$\begin{aligned} E\left[\sum_{t=1}^T \eta_t\left\|\nabla f_t\right\|^2\right] & \geq E\left[\eta_T \Delta\right]=E\left[\left(\left(\eta_T \Delta\right)^{\frac{a-1}{a}}\right)^{\frac{a}{a-1}}\right]\geq\frac{E\left[\Delta^{\frac{a-1}{a}}\right]^{\frac{a}{a-1}}}{E\left[\left(\left(\frac{1}{\eta_T}\right)^{\frac{a-1}{a}}\right)^{a}\right]^{\frac{1}{a-1}}}\end{aligned}$ \\  
+    However, directly replacing $\eta_t$ with $\eta_t^*$ does not work, as the first inequality requires $\eta_t$ to be decreasing, but $\eta_t^*$ holds no such guarantees.
+    Hence, Rachel Ward et al. introduce the L-Lipschitz constraint in order to bound the stochastic gradient related terms from the previous subsection.
+
+\subsection{The Relation between $a$ and $\delta$}
+$E\left[\frac{\left\|\nabla f_t\right\|^2}{2 \sqrt{b_t^2+\left\|\nabla f_t\right\|^2+\sigma^2}}\right] \geq \frac{E\left[\left(\left\|\nabla f_t\right\|^2\right)^{\frac{a-1}{a}}\right]^{\frac{a}{a-1}}}{2
+\left(E\left[\sqrt{b_t^2+\left\|\nabla f_t\right\|^2+\sigma^2}^{a-1}\right]\right)^{\frac{1}{a-1}}} \geq \frac{\left(E\left\|\nabla f_t\right\|^{\frac{2a-2}{a}}\right)^{\frac{a}{a-1}}}{2 \sqrt{E\left[b_t^2+\left\|\nabla f_t\right\|^2+\sigma^2\right]}}$
+\\Moving the expectation into the squared root term requires $a\leq3$, \\
+as otherwise $\sqrt{b_t^2+\left\|\nabla f_t\right\|^2+\sigma^2}^{a-1}$ would not be concave.\par
+On the other hand, through some omitted calculations via similar techniques to Lemma 3 and Lemma 8 from Xiaoyu Li et al. Have:
+$P\left(\min _{t \in[T]}\left\|\nabla f_t\right\|^2 \geq \frac{C_T}{\delta^{\frac{a}{a-1}}}\right)\leq \delta$, where $C_T$ is a term unrelated to $a$ but related to $T$. Thus, larger $a$ results in tighter bound. \par
+From the above, we can see why $a = 3$ is optimal.
+\subsection{Comparison with ADAGRAD-Norm (Xiaoyu Li et al.)}
+Without knowledge of $M$ coefficient (for $M$-smooth), with a large enough coefficient of (2), the combined results of Lemma 3 and 8 in Xiaoyu Li et al.'s work provide no useful bound for $E\left[\sum_{t=1}^T \eta_t\left\|\nabla f_{t-1}\right\|^2\right]$.\\ 
+    \\Note: The technicalities of Lemma 3 and 8 and their relationship with $\textcircled{4}$ of the standard SGD convergence proof format (i.e. the unanswered question from the last report) can be found in "Appendix - Correspondence between Lemma 3, 8 and SGD Proof Format $\textcircled{4}$".
+(1) are bound by the same techniques as Rachel Ward et al., but (2) are not dealt with. \\Note: $L$-Lipschitz provides an upper bound, $\gamma$, for $\left\|\nabla f_t\right\|$. 
+\\
+$\begin{aligned}  E\left[\sum_{t=1}^T \eta_t\left\|\nabla f\left(x_{t-1}\right)\right\|^2\right] &\leq O\left( \ln \left(\sqrt{b_0^2+2 T \sigma^2}+\sqrt{2} E\left[\sqrt{\sum_{t=1}^T \left\|\nabla f\left(x_{t-1}\right)\right\|^2}\right]\right)\right)\text{... (1)} \\ 
+& +\frac{2 \eta M}{\sqrt{b_0^2}} E\left[\sum_{t=1}^T \eta_t\left\|\nabla f\left(x_{t-1}\right)\right\|^2\right]\text{... (2)}\end{aligned}$
+\\For $\frac{2 \eta M}{\sqrt{b_0^2}} > 1$, the inequality always holds, so $E\left[\sum_{t=1}^T \eta_t\left\|\nabla f\left(x_{t-1}\right)\right\|^2\right]$ is not bounded, and adding the Lipschitz constraint is of no use.
+
+\subsection{Convergence Rate Proof Sketch}
+We summarize Rachel Ward's work
+ by mapping the main components of their proof to those five steps in Standard SGD Proof Format:\\
+ \begin{enumerate}
+    \item [$\textcircled{5}$] $|f(x_t)-f(x_{t-1})-\langle\nabla f(x_{t-1}), x_t-x_{t-1}\rangle| \leq \frac{M}{2}\|x_t-x_{t-1}\|^2$
+    \item [$\textcircled{4}$] $\sum_{t=1}^{T}E\left[\frac{\eta\left\|\nabla f_t\right\|^2}{2 \sqrt{b_t^2+\left\|\nabla f_t\right\|^2+\sigma^2}}\right] 
+    \leq f_0-f^*+\sum_{t=1}^{T}\left(\frac{4 \sigma\eta+\eta^2 L}{2} E\left[\frac{\left\|G_t\right\|^2}{b_{t+1}^2}\right]\right)$\\
+    \item [$\textcircled{3}$] 
+    $E\left[\left(\sum_{t=1}^{T}||\nabla f(x_t)||^2\right)^{\frac{3-1}{3}}\right]^{\frac{3}{3-1}}
+    \leq E\left[\left(\sum_{t=1}^{T}\left(||\nabla f(x_t)||^2\right)^{\frac{3-1}{3}}\right)\right]^{\frac{3}{3-1}}
+    = O(\frac{1}{T^{\frac{1}{2} - 1}})$
+    \item [$\textcircled{2}$] $E[min_{1 \leq t < T}||\nabla f(x_t)||^{\frac{2\cdot3-2}{3}}]^{\frac{3}{3-1}} = O(\frac{1}{T^{\frac{1}{2}}})$
+    \item [$\textcircled{1}$] $P([min_{1 \leq t < T}||\nabla f(x_t)||^2 = O(\frac{1}{T^\frac{1
+    }{2}})) \geq 1 - \delta$\\\par
+\end{enumerate} \par
+$\textcircled{1} \xleftarrow{\text{Markov's}} \textcircled{2} \xleftarrow{\text{Trivial}} \textcircled{3} \xleftarrow{\text{ L-Lipschitz }} \textcircled{4} \xleftarrow{\text{Unbiased and bounded variance of stochastic part}} \textcircled{5}$(Assumptions)
+\section{Conclusion}
+To summarize, we analyzed two articles that propose variants of AdaGrad-Norm. We unified the notation of the articles, extracted a five-step procedure for proving the convergence rate, identified the reasons for different update sequences, summarized the usage of constraints and the constant '$a$' in the proofs, and pointed out the bottleneck of exchanging their constraints to derive a similar convergence rate. 
+
+\section{Future Work and Potential Extensions}
+In main proof of the convergence rate of Xiaoyu Li's work, we claimed that it is non-trivial to prove the Holder-related inequality 
+\begin{align*} E\left[\sum_{t=1}^T \eta_t^*\left\|\nabla f_t\right\|^2\right] & \geq \frac{E\left[\Delta^{\frac{a-1}{a}}\right]^{\frac{a}{a-1}}}{E\left[\left(\left(\frac{1}{\eta_T}\right)^{\frac{a-1}{a}}\right)^{a}\right]^{\frac{1}{a-1}}}\end{align*} 
+
+for cases where $\eta_t^*$ is not decreasing. However, we have no concrete proof that it cannot hold for such cases. Hence, we can do one of the following in the future.
+\begin{enumerate}
+        \item [1.] Prove that the inequality does not hold when $\eta_t^*$ is not decreasing.
+        \item [2.] Drop the Lipschitz constraint for Rachel Ward et al..
+        
+\end{enumerate}
+
+\section{References}
+\begin{enumerate}
+    \item Quoc Tran-Dinh. Sublinear Convergence Rates of Extragradient-Type Methods: A
+Survey on Classical and Recent Developments. 
+    \item Xiaoyu Li, Francesco Orabona. On the Convergence of Stochastic Gradient Descent.
+with Adaptive Stepsizes
+    \item Rachel Ward, Xiaoxia Wu, Léon Bottou. AdaGrad stepsizes: Sharp convergence over nonconvex
+landscapes.
+    \item Yen-Huan Li. Optimization algorithms Lecture 3.
+    \item Chih-Jen Lin. Optimization Methods for Deep Learning: Convergence of stochastic gradient methods.
+\end{enumerate}
+\section{Appendix}
+\subsection{On Lemma 3 in "Xiaoyu Li, Francesco Orabona. On the Convergence of Stochastic Gradient Descent. with Adaptive Stepsizes"}
+\subsubsection{Description of Lemma 3}
+Assume $f$ is M-smooth and $E[G(x_{t-1},\xi_{t-1})]=\nabla f(x_{t-1})$. 
+Then, the iterates of SGD with stepsizes $\eta_t \in R^{d}$ satisfy the following inequality. \par\vspace{3mm}
+$\begin{aligned} E\left[\sum_{t=1}^T\left\langle\nabla f\left(x_{t-1}\right), \eta_t \nabla f\left(x_{t-1}\right)\right\rangle\right] \leq f\left(x_{t-1}\right)-f^*  +\ \frac{M}{2} E\left[\sum_{t=1}^T\left\|\eta_t G\left(x_{t-1}, \xi_{t-1}\right)\right\|^2\right]\end{aligned}$
+\subsubsection{Proof}
+From the definition of M-smooth, we have
+$|f(y)-f(x)-\langle\nabla f(x), y-x\rangle| \leq \frac{M}{2}\|y-x\|^2$
+Thus,
+$$
+\begin{aligned}
+f\left(x_{t}\right) & \leq f\left(x_{t-1}\right)+\left\langle\nabla f\left(x_{t-1}\right), {x}_{t}-{x}_{t-1}\right\rangle+\frac{M}{2}\left\|{x}_{t}-{x}_{t-1}\right\|^2 \\
+& =f\left({x}_{t-1}\right)+\left\langle\nabla f\left({x}_{t-1}\right), {\eta}_t\left(\nabla f\left({x}_{t-1}\right)-{G}\left({x}_{t-1}, \xi_{t-1}\right)\right)\right\rangle \\ &-\left\langle\nabla f\left({x}_{t-1}\right), {\eta}_t \nabla f\left({x}_{t-1}\right)\right\rangle+\frac{M}{2}\left\|{\eta}_t {G}\left({x}_{t-1}, \xi_{t-1}\right)\right\|^2 .
+\end{aligned}
+$$
+Taking the conditional expectation with respect to $\xi_0, \cdots, \xi_{t-2}$, we have\\
+\begin{align*}
+E_{t-1}\left[\left\langle\nabla f\left({x}_{t-1}\right), {\eta}_t\left(\nabla f\left({x}_{t-1}\right)-{G}\left({x}_{t-1}, \xi_{t-1}\right)\right)\right\rangle\right]\\
+=\left\langle\nabla f\left({x}_{t-1}\right), {\eta}_t \nabla f\left({x}_{t-1}\right)-{\eta}_t {E}_t\left[{G}\left({x}_{t-1}, \xi_{t-1}\right)\right]\right\rangle=0 .
+\end{align*}
+\par\vspace{2mm}
+Hence, from the law of total expectation, we have\par\vspace{3mm}
+$
+{E}\left[\left\langle\nabla f\left({x}_{t-1}\right), {\eta}_t \nabla f\left({x}_{t-1}\right)\right\rangle\right] \leq {E}\left[f\left({x}_{t-1}\right)-f\left({x}_{t}\right)+\frac{M}{2}\left\|{\eta}_t {g}\left({x}_{t-1}, \xi_{t-1}\right)\right\|^2\right] .
+$\par\vspace{3mm}
+Summing over $t=1$ to $T$ and lower bounding $f\left({x}_{T}\right)$ with $f^{\star}$, we have the stated bound.
+\subsection{On Lemma 8 in "Xiaoyu Li, Francesco Orabona. On the Convergence of Stochastic Gradient Descent. with Adaptive Stepsizes"}
+\subsubsection{Description of Lemma 8}
+Assume $f$ is M-smooth, $E[G(x_{t-1},\xi_{t-1})]=\nabla f(x_{t-1})$ and the stochastic gradient satisfies \par\vspace{3mm}$E\left[\exp \left(\|\nabla f(x)-g(x, \xi)\|^2 / \sigma^2\right)\right] \leq \exp (1), \forall x$. \par\vspace{3mm} Then, \par\vspace{3mm}
+$\begin{aligned} E\left[\sum_{t=1}^T \eta_t^2\left\|G\left(x_{t-1}, \xi_{t-1}\right)\right\|^2\right] \leq &\ K+\frac{4 \eta^2}{b_0^2}(1+\ln T) \sigma^2 +\frac{4 \eta}{b_0} E\left[\sum_{t=1}^T \eta_t\left\|\nabla f\left(x_{t-1}\right)\right\|^2\right]
+\end{aligned}$, \par\vspace{4mm} where 
+$K=2 \eta^2 \ln \left(\sqrt{b_0^2+2 T \sigma^2}+\sqrt{2} E\left[\sqrt{\sum_{t=1}^T\left\|\nabla f\left(x_{t-1}\right)\right\|^2}\right]\right)-2\eta^2 ln(b_0)$
+\subsubsection{Proof}
+Lemma 10 states: If $x>0, \eta>0$, then $\ln (\frac{1}{x}) \geq \eta\left(1-x^{\frac{1}{\eta}}\right)$.
+$$
+\begin{aligned}
+& {E}\left[\sum_{t=1}^T \eta_{t+1}^2\left\|{G}\left({x}_{t-1}, \xi_t\right)\right\|^2\right]={E}\left[\sum_{t=1}^T \frac{\eta^2\left\|{G}\left({x}_{t-1}, \xi_{t-1}\right)\right\|^2}{\left(b_0^2 +\sum_{i=1}^t\left\|{g}\left({x}_{i-1}, \xi_{i-1}\right)\right\|^2\right)}\right] \\
+& \leq 2 \eta^2 {E}\left[\ln \left(\sqrt{b_0^2 +\sum_{t=1}^T\left\|{g}\left({x}_{t-1}, \xi_{t-1}\right)\right\|^2}\right)\right]-\eta^2 \ln \left(b_0^2\right)\\
+& \\
+& \leq 2 \eta^2 \ln \left(\sqrt{b_0^2 +2 T \sigma^2}+\sqrt{2} {E}\left[\sqrt{\sum_{t=1}^T\left\|\nabla f\left({x}_{t-1}\right)\right\|^2}\right]\right)-\eta^2 \ln \left(b_0^2\right)
+\end{aligned}
+$$
+Where in the first inequality we used Lemma 10 and in the third we used Jensen's inequality.
+Putting things together, we have\par
+\begin{align*}
+& {E}\left[\sum_{t=1}^T \eta_t^2\left\|{G}\left({x}_{t-1}, \xi_{t-1}\right)\right\|^2\right]\\&={E}\left[\sum_{t=1}^T \eta_{t+1}^2\left\|{G}\left({x}_{t-1}, \xi_{t-1}\right)\right\|^2+\sum_{t=1}^T\left\|{G}\left({x}_{t-1}, \xi_{t-1}\right)\right\|^2\left(\eta_t^2-\eta_{t+1}^2\right)\right] \\
+& \leq 2 \eta^2 \ln \left(\sqrt{b_0^2 +2 T \sigma^2}+\sqrt{2} {E}\left[\sqrt{\sum_{t=1}^T\left\|\nabla f\left({x}_{t-1}\right)\right\|^2}\right]\right)-\eta^2 \ln \left(b_0^2\right)
+\\&+\frac{4 \eta^2}{b_0^2 }(1+\ln T) \sigma^2+\frac{4 \eta}{b_0^2 ^{\frac{1}{2}}} {E}\left[\sum_{t=1}^T \eta_t\left\|\nabla f\left({x}_{t-1}\right)\right\|^2\right]
+\end{align*}
+
+\subsection{On the Use of Markov's Inequality}
+Markov's inequality states that $P(X\geq a)\leq \frac{E[X]}{a}$ ,if $X$ is a non-negative random variable and $a > 0$. We use this inequality to prove the equivalence of the expectation form and probability form of convergence bound in our studies.\\\\
+    $\rightarrow P(min_{0\leq t \leq T} ||\nabla f(x_t)||^2 \geq \frac{E[(min_{0\leq t \leq T} ||\nabla f(x_t)||^2]}{\delta}) \leq \delta$\\
+    $\rightarrow P(min_{0\leq t \leq T} ||\nabla f(x_t)||^2 \leq \frac{E[(min_{0\leq t \leq T} ||\nabla f(x_t)||^2]}{\delta}) \geq 1-\delta$\\
+    $\rightarrow H(\delta, T, D^*)=\frac{E[(min_{0\leq t \leq T} ||\nabla f(x_t)||^2]}{\delta}$
+\subsection{On the Use of Holder's Inequality}
+Holder's inequality states that, $E\left[X^p\right]^{\frac{1}{p}}\cdot E\left[Y^q\right]^{\frac{1}{q}}\geq E\left[XY\right]$ ,given $\frac{1}{p}+\frac{1}{q}=1\land p,q,X,Y > 0$.\par
+In our studies, by choosing $p=\frac{a}{a-1}$, $q=a$, $X=A^\frac{a-1}{a}$, $Y=B^\frac{a-1}{a}$, $a > 1$, we have the inequality:\par
+$E\left[\left(A^\frac{a-1}{a}\right)^\frac{a}{a-1}\right]^\frac{a-1}{a} \cdot E\left[\left(B^\frac{a-1}{a}\right)^a\right]^\frac{1}{a} \geq E\left[\left(AB\right)^\frac{a-1}{a}\right]$
+
+\bibliographystyle{ieee}
+% \bibliography{egbib}
+
+
+\end{document}
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
